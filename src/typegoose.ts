@@ -22,6 +22,12 @@ export interface GetModelForClassOptions {
 }
 
 export class Typegoose {
+  public schema: mongoose.Schema;
+
+  constructor(schemaOptions?: mongoose.SchemaOptions) {
+    this.schema = this.buildSchema(this.constructor.name, schemaOptions);
+  }
+
   getModelForClass<T>(t: T, { existingMongoose, schemaOptions, existingConnection }: GetModelForClassOptions = {}) {
     const name = this.constructor.name;
     if (!models[name]) {
@@ -35,13 +41,13 @@ export class Typegoose {
     const name = this.constructor.name;
 
     // get schema of current model
-    let sch = this.buildSchema(name, schemaOptions);
+    this.schema = this.buildSchema(name, schemaOptions);
     // get parents class name
     let parentCtor = Object.getPrototypeOf(this.constructor.prototype).constructor;
     // iterate trough all parents
     while (parentCtor && parentCtor.name !== 'Typegoose' && parentCtor.name !== 'Object') {
       // extend schema
-      sch = this.buildSchema(parentCtor.name, schemaOptions, sch);
+      this.schema = this.buildSchema(parentCtor.name, schemaOptions, this.schema);
       // next parent
       parentCtor = Object.getPrototypeOf(parentCtor.prototype).constructor;
     }
@@ -53,7 +59,7 @@ export class Typegoose {
       model = existingMongoose.model.bind(existingMongoose);
     }
 
-    models[name] = model(name, sch);
+    models[name] = model(name, this.schema);
     constructors[name] = this.constructor;
 
     return models[name] as ModelType<this> & T;
